@@ -1,0 +1,351 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul 23 10:32:46 2020
+
+@author: carsu
+"""
+
+import os
+import random
+import re
+import sys
+import numpy as np
+from pandas.core.common import flatten
+
+DAMPING = 0.85
+SAMPLES = 10000
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python pagerank.py corpus")
+    corpus = crawl(sys.argv[1])
+    
+    ranks = sample_pagerank(corpus, DAMPING, SAMPLES)
+    print(f"PageRank Results from Sampling (n = {SAMPLES})")
+    for page in sorted(ranks):
+        print(f"  {page}: {ranks[page]:.4f}")
+    ranks = iterate_pagerank(corpus, DAMPING)
+    print(f"PageRank Results from Iteration")
+    for page in sorted(ranks):
+        print(f"  {page}: {ranks[page]:.4f}")
+
+
+def crawl(directory):
+    """
+    Parse a directory of HTML pages and check for links to other pages.
+    Return a dictionary where each key is a page, and values are
+    a list of all other pages in the corpus that are linked to by the page.
+    """
+    pages = dict()
+
+    # Extract all links from HTML files
+    for filename in os.listdir(directory):
+        if not filename.endswith(".html"):
+            continue
+        with open(os.path.join(directory, filename)) as f:
+            contents = f.read()
+            links = re.findall(r"<a\s+(?:[^>]*?)href=\"([^\"]*)\"", contents)
+            pages[filename] = set(links) - {filename}
+
+    # Only include links to other pages in the corpus
+    for filename in pages:
+        pages[filename] = set(
+            link for link in pages[filename]
+            if link in pages
+        )
+
+    return pages
+
+
+def transition_model(corpus, page, damping_factor):
+    """
+    Return a probability distribution over which page to visit next,
+    given a current page.
+
+    With probability `damping_factor`, choose a link at random
+    linked to by `page`. With probability `1 - damping_factor`, choose
+    a link at random chosen from all pages in the corpus.
+    """
+    final_list = []
+    #dictkeys = list(corpus.keys())
+    #dictvalues = list(corpus.values())
+    dictkeys2 = list(map(list, corpus.items()))
+    #print(dictkeys2)
+    #flatList = []
+    
+    #for elem in dictkeys2:
+        #flatList.extend(elem)
+    #print(flatList)
+    #####convert corpus into a single list, eliminate duplicates and then
+    ##use that list for the iterations instead of dictkeys
+    
+    #list2 = ' '.join([' '.join(strings) for strings in dictkeys]).split()
+    
+    #print(list2)
+    #list2 = list(flatten(flatList))
+    #print(list2)
+    list3 = list(flatten(dictkeys2))
+    #print(list3)
+    list_no_duplicates = list(set(list3)) #list of all pages 
+    #print(list_no_duplicates)
+    
+    key = page
+    if key in corpus:
+        value_page = list(corpus.get(page))
+        low_prob = (1-damping_factor)/len(list_no_duplicates)
+        high_prob = damping_factor/len(value_page)
+    #print(value_page)
+        
+        for i in list_no_duplicates:
+            
+            
+            if i in value_page:
+                
+                total_prob = high_prob + low_prob
+            else:
+                
+                total_prob = low_prob
+            
+            final_list.append(total_prob)
+            
+        #return final_dict
+    else:
+        #dictkeys.append(page)
+        for i in list_no_duplicates: #dictkeys:
+            prob = 1/len(list_no_duplicates)
+            total_prob = prob
+            final_list.append(total_prob)
+        
+        final_list.append(total_prob)
+        
+        
+    zipbObjt = zip(list_no_duplicates, final_list)
+    final_dict = dict (zipbObjt) 
+    #print(final_dict)
+    return final_dict
+
+
+
+
+
+
+
+def sample_pagerank(corpus, damping_factor, n):
+    """
+    Return PageRank values for each page by sampling `n` pages
+    according to transition model, starting with a page at random.
+
+    Return a dictionary where keys are page names, and values are
+    their estimated PageRank value (a value between 0 and 1). All
+    PageRank values should sum to 1.
+    """
+    #dictkeys = list (corpus.keys())  #list of keys (pages)
+    dictkeys2 = list(map(list, corpus.items()))
+    #print(dictkeys2)
+    list3 = list(flatten(dictkeys2))
+    list_no_duplicates = list(set(list3))
+    #print(list_no_duplicates)
+    first_sample = random.choice(list_no_duplicates)
+    
+    #print(first_sample)
+    #first_sample = random.choice(list(corpus)) #generate first sample
+    previous_sample = first_sample
+    #print(previous_sample)
+    list_samples = []
+    list_samples.append(first_sample)
+    list_prob_samples = []
+    weights = []
+    i = 1
+    
+    while (i<n):
+        key = previous_sample
+        
+        print(key)
+        if key in corpus:
+       #print(list_no_duplicates)
+           next_sample_dict = transition_model(corpus, previous_sample, damping_factor)
+           #print(next_sample_dict)
+           #print(next_sample_dict)
+           values_previous_sample = list(corpus.get(previous_sample))
+           
+           #print(values_previous_sample)
+           weights = list(next_sample_dict.get(elem) for elem in values_previous_sample)
+           #print(weights)
+           number = 0
+        #sum_to_1 = 1- sum(weights)
+           if sum(weights) != 1:
+                for number in range(0, len(weights)):
+                        
+                    new_number = 1/len(weights)
+                    weights[number] = new_number
+           else:
+                pass
+           next_sample = np.random.choice(values_previous_sample, p = weights)
+           #print(next_sample)
+        else:
+            next_sample = random.choice(list_no_duplicates)
+            #print(next_sample)
+        
+        list_samples.append(next_sample)
+        #prop_of_samples = list_samples.count(next_sample)
+        #print(list_samples)
+        #print(prop_of_samples)
+        #prop_in_percentage = prop_of_samples/len(list_samples)
+            #print(prop_in_percentage)
+        #list_prob_samples.append(prop_in_percentage)
+            #print(list_prob_samples)
+        """if next_sample != first_sample:
+            prop_of_first_sample = list_samples.count(first_sample)
+            prop_percent_first = prop_of_first_sample/len(list_samples)
+            list_prob_samples.append(prop_percent_first)
+        else:
+            pass"""
+        
+            
+        
+        previous_sample = next_sample
+        i = i +1
+    for i in range(0,len(list_samples)):
+        prob = list_samples[i]
+        freq_count = list_samples.count(prob)
+        percent = freq_count/len(list_samples)
+        list_prob_samples.append(percent)
+    #print(list_prob_samples)
+    #print(list_samples)
+    zip_final = zip(list_samples, list_prob_samples)
+    final_dict = dict (zip_final)
+    print( final_dict)
+            
+       
+      
+
+
+def iterate_pagerank(corpus, damping_factor):
+    """
+    Return PageRank values for each page by iteratively updating
+    PageRank values until convergence.
+
+    Return a dictionary where keys are page names, and values are
+    their estimated PageRank value (a value between 0 and 1). All
+    PageRank values should sum to 1.
+    """
+    #raise NotImplementedError
+    
+    initial_list = list(map(list, corpus.items()))
+    #print(dictkeys2)
+    list2 = list(flatten(initial_list))
+    list_no_duplicates = list(set(list2))
+    N = len(list_no_duplicates)
+    Pr_init = 1/N
+    Pr_i = Pr_init
+    page_ranks = []
+    pages_list = []
+    fract = 0
+    #Pr_p = (1-damping_factor)/N + damping_factor * fract
+    key_list = list(corpus.keys())
+    #print(key_list)
+    values_list = list(corpus.values())
+    #print(val_list)
+    values_flat = list(flatten(values_list))
+    values_no_dup = list(set(values_flat))
+    #print(values_no_dup)
+    #print(N)
+    #print(len(values_no_dup))
+    if N == len(values_no_dup):
+        #print(N)
+        #print(len(values_no_dup))
+        for key in key_list:
+            pages = list(corpus.get(key))
+            #print(pages)
+            for page in pages:
+                pages_list.append(page)
+                num_links_i = len(pages)
+                ###remember to eliminate doppia calculation dei Pr for same page in pages
+                
+                fract += Pr_i/num_links_i
+                #print(fract)
+            Pr_p = (1-damping_factor)/N + damping_factor * fract
+                #print(Pr_p)
+            page_ranks.append(Pr_p)
+            Pr_i = Pr_p 
+    else:
+        for elem in list_no_duplicates:
+            
+            for n in key_list:
+                if elem==n:
+                    pass
+                else:
+                    get_key = [key for key, value in corpus.items() if value == elem]
+                    print(get_key)
+                    Pr_p = Pr_i
+                    page_ranks.append(Pr_p)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    #print(val_list_flat)
+    #diff = Pr_i -Pr_p
+    #corpus_list = [[k,v] for k, values in corpus.items() for v in values]
+    #print(corpus_list)
+    #if N == len(values_list):
+     
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    """for elem in range(0,len(pages)):
+        element = pages[elem]
+        print(element)
+        pages_list.append(element)
+        num_links_i = len(pages)
+                #print(num_links_i)
+        fract += Pr_i/num_links_i
+        print(fract)
+        Pr_p = (1-damping_factor)/N + damping_factor * fract
+        print(Pr_p)
+        page_ranks.append(Pr_p)
+        Pr_i = Pr_p 
+                
+    zipbObjt = zip(pages_list, page_ranks)
+    final_dict = dict (zipbObjt) 
+    print(final_dict)"""           #print(Pr_p)
+                        
+                
+            
+        #print(Page)
+        #print(value)
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+
+
